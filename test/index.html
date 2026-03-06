@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cindel · test</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0c0c0d;
+      --surface: #131315;
+      --raised: #1a1a1d;
+      --border: #232326;
+      --border2: #2e2e33;
+      --muted: #3d3d44;
+      --subtle: #65656f;
+      --dim: #88889a;
+      --text: #d2d2dc;
+      --bright: #eeeef4;
+      --accent: #ffac79;
+      --green: #4ade80;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --purple: #c084fc;
+      --mono: 'IBM Plex Mono', monospace;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .logo span {
+      color: var(--dim);
+      font-weight: 400;
+    }
+
+    .header-pills {
+      display: flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border: 1px solid var(--border2);
+      font-size: 11px;
+      color: var(--subtle);
+      letter-spacing: 0.04em;
+      cursor: default;
+    }
+
+    .pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s, box-shadow 0.3s;
+      flex-shrink: 0;
+    }
+
+    .pill .dot.on {
+      background: var(--green);
+      box-shadow: 0 0 5px var(--green);
+    }
+
+    .pill .dot.err {
+      background: var(--red);
+      box-shadow: 0 0 5px var(--red);
+    }
+
+    .pill .dot.pulse {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.25;
+      }
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: var(--hmr-width, 340px) 5px 1fr;
+      grid-template-rows: 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .resize-handle {
+      background: var(--border);
+      cursor: col-resize;
+      position: relative;
+      transition: background 0.15s;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .resize-handle:hover,
+    .resize-handle.dragging {
+      background: var(--accent);
+    }
+
+    .resize-handle::after {
+      content: '';
+      position: absolute;
+      inset: 0 -4px;
+    }
+
+    .panel-hmr {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 180px;
+    }
+
+    .panel-right {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tabbar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .tab {
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--subtle);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s;
+      user-select: none;
+    }
+
+    .tab:hover {
+      color: var(--dim);
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-panel.active {
+      display: flex;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    /* inputs / buttons */
+    input,
+    select,
+    textarea {
+      background: var(--raised);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--muted);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--muted);
+    }
+
+    input:disabled,
+    textarea:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2365656f'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+
+    button {
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 7px 14px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    button:hover {
+      border-color: var(--muted);
+      color: var(--bright);
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    button.danger:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    button.small {
+      padding: 4px 9px;
+      font-size: 10px;
+    }
+
+    button:disabled {
+      opacity: 0.3;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    .log-entry {
+      display: grid;
+      grid-template-columns: 68px 38px 1fr;
+      gap: 0 8px;
+      padding: 2px 14px;
+      font-size: 11.5px;
+      line-height: 1.6;
+      transition: background 0.1s;
+    }
+
+    .log-entry:hover {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .log-ts {
+      color: var(--muted);
+    }
+
+    .log-tag {
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .log-msg {
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+
+    .log-tag.in {
+      color: var(--blue);
+    }
+
+    .log-tag.out {
+      color: var(--accent);
+    }
+
+    .log-tag.info {
+      color: var(--subtle);
+    }
+
+    .log-tag.err {
+      color: var(--red);
+    }
+
+    .log-tag.ok {
+      color: var(--green);
+    }
+
+    .log-tag.warm {
+      color: var(--orange);
+    }
+
+    .log-tag.cold {
+      color: var(--purple);
+    }
+
+    .log-msg.dim {
+      color: var(--subtle);
+      font-style: italic;
+    }
+
+    .log-msg.ok {
+      color: var(--green);
+    }
+
+    .log-msg.err {
+      color: var(--red);
+    }
+
+    .hmr-connect {
+      display: flex;
+      gap: 6px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .ws-bar {
+      display: flex;
+      gap: 6px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .connections-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    .conn-card {
+      border-bottom: 1px solid var(--border);
+      animation: slide-in 0.12s ease;
+    }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateY(-3px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .conn-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .status-dot.connecting {
+      background: var(--blue);
+      animation: blink 1s infinite;
+    }
+
+    .status-dot.open {
+      background: var(--green);
+      box-shadow: 0 0 5px var(--green);
+    }
+
+    .status-dot.closed {
+      background: var(--red);
+    }
+
+    .conn-label {
+      font-size: 11px;
+      color: var(--subtle);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .conn-label strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .conn-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .conn-log {
+      max-height: 200px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+      padding: 4px 0;
+    }
+
+    .conn-send {
+      display: flex;
+      border-top: 1px solid var(--border);
+    }
+
+    .conn-send input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      border-radius: 0;
+      font-size: 11px;
+      padding: 7px 12px;
+    }
+
+    .conn-send input:focus {
+      border: none;
+    }
+
+    .conn-send button {
+      border: none;
+      border-left: 1px solid var(--border2);
+      font-size: 10px;
+      padding: 7px 12px;
+    }
+
+    .conn-send button:hover {
+      background: var(--border);
+    }
+
+    .cors-form {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .cors-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .cors-row select {
+      width: 90px;
+      flex-shrink: 0;
+    }
+
+    .cors-body-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-label {
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--subtle);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+      max-height: 120px;
+    }
+
+    .cors-response {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    .response-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border: 1px solid;
+    }
+
+    .status-badge.ok {
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .status-badge.err {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .status-badge.warn {
+      color: var(--orange);
+      border-color: var(--orange);
+    }
+
+    .response-headers {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 8px;
+      font-size: 11px;
+      padding: 1px 0;
+    }
+
+    .header-key {
+      color: var(--blue);
+    }
+
+    .header-val {
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .response-body {
+      padding: 10px 14px;
+      font-size: 11.5px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text);
+    }
+
+    /* files / config */
+    .fetch-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .fetch-bar .path-label {
+      color: var(--subtle);
+      font-size: 11px;
+      flex: 1;
+    }
+
+    .data-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      font-size: 11.5px;
+      color: var(--text);
+      transition: background 0.1s;
+    }
+
+    .file-item:hover {
+      background: var(--raised);
+    }
+
+    .file-ext {
+      font-size: 10px;
+      padding: 1px 5px;
+      border: 1px solid;
+      flex-shrink: 0;
+    }
+
+    .ext-js {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .ext-css {
+      color: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .ext-mjs {
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .ext-cjs {
+      color: var(--orange);
+      border-color: var(--orange);
+    }
+
+    .ext-other {
+      color: var(--subtle);
+      border-color: var(--border2);
+    }
+
+    .config-json {
+      font-size: 11.5px;
+      white-space: pre;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .json-key {
+      color: var(--blue);
+    }
+
+    .json-str {
+      color: var(--green);
+    }
+
+    .json-num {
+      color: var(--orange);
+    }
+
+    .json-bool {
+      color: var(--purple);
+    }
+
+    .json-null {
+      color: var(--subtle);
+    }
+
+    .empty-state {
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+      padding: 32px 0;
+      font-style: italic;
+    }
+
+    .count {
+      background: var(--muted);
+      color: var(--bg);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 2px;
+      min-width: 18px;
+      text-align: center;
+      transition: background 0.3s;
+    }
+
+    .count.active {
+      background: var(--accent);
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">cindel <span>/ test</span></div>
+    <div id="server-addr" style="font-size:11px;color:var(--subtle)">wss://localhost:2000</div>
+    <div class="header-pills" id="status-pills">
+      <div class="pill" id="pill-hmr">
+        <div class="dot pulse" id="dot-hmr"></div>HMR
+      </div>
+      <div class="pill" id="pill-cors">
+        <div class="dot" id="dot-cors"></div>CORS
+      </div>
+      <div class="pill" id="pill-ws">
+        <div class="dot" id="dot-ws"></div>WS Proxy
+      </div>
+      <div class="pill" id="pill-files">
+        <div class="dot" id="dot-files"></div>Files
+      </div>
+      <div class="pill" id="pill-config">
+        <div class="dot" id="dot-config"></div>Config
+      </div>
+    </div>
+  </header>
+
+  <div class="workspace">
+
+    <!-- Left: HMR Events -->
+    <div class="panel-hmr">
+      <div class="section-head">
+        <span class="section-title">HMR Events</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="count" id="hmr-count">0</span>
+          <button class="small" onclick="clearHmrLog()">Clear</button>
+        </div>
+      </div>
+      <div class="hmr-connect">
+        <input id="hmr-url" type="text" value="wss://localhost:2000/hmr" spellcheck="false" style="font-size:11px" />
+        <button class="primary" id="hmr-btn" onclick="toggleHmr()">Connect</button>
+      </div>
+      <div class="log" id="hmr-log">
+        <div class="empty-state">Not connected</div>
+      </div>
+    </div>
+
+    <!-- Resize handle -->
+    <div class="resize-handle" id="resize-handle"></div>
+
+    <!-- Right: Tabs -->
+    <div class="panel-right">
+      <div class="tabbar">
+        <div class="tab active" data-tab="ws">WS Proxy</div>
+        <div class="tab" data-tab="cors">CORS Proxy</div>
+        <div class="tab" data-tab="files">Files</div>
+        <div class="tab" data-tab="config">Config</div>
+      </div>
+
+      <!-- WS Proxy Tab -->
+      <div class="tab-panel active" id="tab-ws">
+        <div class="ws-bar">
+          <input id="ws-url" type="text" value="wss://localhost:2000/proxy/wss://"
+            placeholder="wss://localhost:2000/proxy/wss://target:port" spellcheck="false" />
+          <button class="primary" onclick="wsOpen()">Connect</button>
+        </div>
+        <div class="connections-list" id="ws-connections">
+          <div class="empty-state" id="ws-empty" style="margin-top:24px">No connections</div>
+        </div>
+      </div>
+
+      <!-- CORS Proxy Tab -->
+      <div class="tab-panel" id="tab-cors">
+        <div class="cors-form">
+          <div class="cors-row">
+            <select id="cors-method">
+              <option>GET</option>
+              <option>POST</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+              <option>DELETE</option>
+              <option>OPTIONS</option>
+            </select>
+            <input id="cors-target" type="text" placeholder="https://api.example.com/endpoint" spellcheck="false" />
+          </div>
+          <div class="cors-body-row" id="cors-body-wrap">
+            <div class="field-label">Request body</div>
+            <textarea id="cors-body" placeholder='{"key": "value"}' rows="3"></textarea>
+            <div class="field-label" style="margin-top:4px">Content-Type</div>
+            <input id="cors-content-type" type="text" placeholder="application/json" spellcheck="false" />
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="cors-proxy-path" type="text" value="/proxy" style="width:90px;flex-shrink:0" />
+            <span style="font-size:11px;color:var(--subtle);flex:1">proxy prefix</span>
+            <button class="primary" id="cors-btn" onclick="corsSend()">Send</button>
+          </div>
+        </div>
+        <div class="cors-response" id="cors-response">
+          <div class="empty-state" style="margin-top:32px">No request sent yet</div>
+        </div>
+      </div>
+
+      <!-- Files Tab -->
+      <div class="tab-panel" id="tab-files">
+        <div class="fetch-bar">
+          <span class="path-label" id="files-label">GET /files</span>
+          <span class="count" id="files-count" style="display:none"></span>
+          <button onclick="fetchFiles()">Fetch</button>
+        </div>
+        <div class="data-view" id="files-view">
+          <div class="empty-state">Click fetch to load watched files</div>
+        </div>
+      </div>
+
+      <!-- Config Tab -->
+      <div class="tab-panel" id="tab-config">
+        <div class="fetch-bar">
+          <span class="path-label">GET /config</span>
+          <button onclick="fetchConfig()">Fetch</button>
+        </div>
+        <div class="data-view" id="config-view">
+          <div class="empty-state">Click fetch to load server config</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { HMRClient } from '../dist/client.js';
+
+    // --- Utilities
+    const $ = id => document.getElementById(id);
+    let hmrEventCount = 0;
+    let wsCounter = 0;
+
+    function ts() {
+      return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function addLog(logEl, tag, tagClass, msg, msgClass = '') {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML =
+        `<span class="log-ts">${ts()}</span>` +
+        `<span class="log-tag ${tagClass}">${tag}</span>` +
+        `<span class="log-msg ${msgClass}">${esc(String(msg))}</span>`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function setDot(id, state) {
+      const d = $(`dot-${id}`);
+      if (!d) return;
+      d.className = 'dot' + (state === 'on' ? ' on' : state === 'err' ? ' err' : state === 'pulse' ? ' pulse' : '');
+    }
+
+    // --- Tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        $(`tab-${tab.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    // --- HMR
+    let hmrClient = null;
+
+    window.toggleHmr = function () {
+      if (hmrClient) {
+        disconnectHmr();
+      } else {
+        connectHmr();
+      }
+    };
+
+    function connectHmr() {
+      const url = $('hmr-url').value.trim();
+      if (!url) return;
+
+      const log = $('hmr-log');
+      log.innerHTML = '';
+      addLog(log, '·', 'info', `Connecting to ${url}…`, 'dim');
+
+      $('hmr-btn').disabled = true;
+      setDot('hmr', 'pulse');
+
+      function bumpCount() {
+        hmrEventCount++;
+        const count = $('hmr-count');
+        count.textContent = hmrEventCount;
+        count.classList.add('active');
+      }
+
+      const httpUrl = (() => {
+        const u = new URL(url);
+        return `${u.protocol === 'wss:' ? 'https' : 'http'}://${u.host}`;
+      })();
+
+      hmrClient = new HMRClient({ wsUrl: url, httpUrl, autoReconnect: false });
+
+      hmrClient
+        .on('connect', () => {
+          $('hmr-btn').textContent = 'Disconnect';
+          $('hmr-btn').disabled = false;
+          $('hmr-btn').classList.remove('primary');
+          $('hmr-btn').classList.add('danger');
+          setDot('hmr', 'on');
+          addLog(log, '✓', 'ok', 'Connected', 'ok');
+        })
+        .on('disconnect', () => {
+          $('hmr-btn').textContent = 'Connect';
+          $('hmr-btn').disabled = false;
+          $('hmr-btn').classList.add('primary');
+          $('hmr-btn').classList.remove('danger');
+          setDot('hmr', 'err');
+          addLog(log, '·', 'info', 'Disconnected', 'dim');
+          hmrClient = null;
+        })
+        .on('init', ({ files, config }) => {
+          bumpCount();
+          addLog(log, 'init', 'info', `${files.length} files · cold: [${(config?.cold ?? []).join(', ')}]`);
+        })
+        .on('reload', (file) => {
+          bumpCount();
+          addLog(log, 'hmr', 'warm', file);
+        })
+        .on('add', (file) => {
+          bumpCount();
+          addLog(log, 'add', 'ok', file);
+        })
+        .on('remove', (file) => {
+          bumpCount();
+          addLog(log, 'rm', 'err', file);
+        })
+        .on('cold', (file) => {
+          bumpCount();
+          addLog(log, 'cold', 'cold', file);
+        })
+        .on('error', (err) => {
+          addLog(log, '✖', 'err', err?.message ?? 'Connection error', 'err');
+          setDot('hmr', 'err');
+        });
+
+      hmrClient.connect();
+    }
+
+    function disconnectHmr() {
+      if (hmrClient) {
+        hmrClient.disconnect();
+        hmrClient = null;
+      }
+    }
+
+    window.clearHmrLog = function () {
+      $('hmr-log').innerHTML = '';
+      hmrEventCount = 0;
+      $('hmr-count').textContent = '0';
+      $('hmr-count').classList.remove('active');
+    };
+
+    // --- WS Proxy
+    const wsConns = new Map();
+
+    window.wsOpen = function () {
+      const url = $('ws-url').value.trim();
+      if (!url) return;
+
+      const id = ++wsCounter;
+      $('ws-empty').style.display = 'none';
+      setDot('ws', 'on');
+
+      const card = document.createElement('div');
+      card.className = 'conn-card';
+      card.id = `conn-${id}`;
+      card.innerHTML = `
+      <div class="conn-head">
+        <div class="status-dot connecting" id="ws-dot-${id}"></div>
+        <div class="conn-label"><strong>#${id}</strong> ${esc(truncUrl(url))}</div>
+        <div class="conn-actions">
+          <button class="small" onclick="wsClear(${id})">Clear</button>
+          <button class="small danger" id="ws-close-btn-${id}" onclick="wsClose(${id})">Close</button>
+        </div>
+      </div>
+      <div class="conn-log log" id="ws-log-${id}"></div>
+      <div class="conn-send">
+        <input id="ws-input-${id}" type="text" placeholder="Message…" disabled spellcheck="false"
+          onkeydown="if(event.key==='Enter') wsSend(${id})" />
+        <button id="ws-send-btn-${id}" onclick="wsSend(${id})" disabled>Send</button>
+      </div>
+    `;
+
+      $('ws-connections').prepend(card);
+
+      const log = $(`ws-log-${id}`);
+      addLog(log, '·', 'info', `Connecting…`, 'dim');
+
+      const ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        $(`ws-dot-${id}`).className = 'status-dot open';
+        $(`ws-input-${id}`).disabled = false;
+        $(`ws-send-btn-${id}`).disabled = false;
+        addLog(log, '✓', 'ok', 'Connected', 'ok');
+      };
+
+      ws.onmessage = ({ data }) => addLog(log, '←', 'in', data);
+
+      ws.onerror = () => {
+        addLog(log, '✖', 'err', 'Error', 'err');
+      };
+
+      ws.onclose = ({ code, reason }) => {
+        $(`ws-dot-${id}`).className = 'status-dot closed';
+        $(`ws-input-${id}`).disabled = true;
+        $(`ws-send-btn-${id}`).disabled = true;
+        $(`ws-close-btn-${id}`).disabled = true;
+        addLog(log, '·', 'info', `Closed - code ${code}${reason ? ` (${reason})` : ''}`, 'dim');
+      };
+
+      wsConns.set(id, { ws, log });
+    };
+
+    window.wsClose = function (id) {
+      wsConns.get(id)?.ws.close();
+    };
+
+    window.wsClear = function (id) {
+      const c = wsConns.get(id);
+      if (c) c.log.innerHTML = '';
+    };
+
+    window.wsSend = function (id) {
+      const c = wsConns.get(id);
+      const input = $(`ws-input-${id}`);
+      const msg = input.value.trim();
+      if (!msg || !c || c.ws.readyState !== WebSocket.OPEN) return;
+      c.ws.send(msg);
+      addLog(c.log, '→', 'out', msg);
+      input.value = '';
+    };
+
+    function truncUrl(url) {
+      try { const u = new URL(url); return u.host + u.pathname; } catch { return url.slice(0, 50); }
+    }
+
+    // --- CORS Proxy 
+    const methods = ['GET', 'HEAD', 'OPTIONS'];
+
+    $('cors-method').addEventListener('change', () => {
+      const noBody = methods.includes($('cors-method').value);
+      $('cors-body-wrap').style.display = noBody ? 'none' : 'flex';
+    });
+
+    // Hide body for GET by default
+    $('cors-body-wrap').style.display = 'none';
+
+    window.corsSend = async function () {
+      const method = $('cors-method').value;
+      const target = $('cors-target').value.trim();
+      const prefix = $('cors-proxy-path').value.trim();
+      const bodyRaw = $('cors-body').value.trim();
+
+      if (!target) return;
+
+      const proxyUrl = `${prefix}/${target}`;
+      const btn = $('cors-btn');
+      btn.textContent = '…';
+      btn.disabled = true;
+      setDot('cors', 'pulse');
+
+      const res = $('cors-response');
+      res.innerHTML = '';
+
+      const start = performance.now();
+
+      try {
+        const opts = { method, headers: {} };
+
+        if (!methods.includes(method) && bodyRaw) {
+          const contentType = $('cors-content-type').value.trim();
+          if (contentType) {
+            opts.headers['Content-Type'] = contentType;
+          } else {
+            try { JSON.parse(bodyRaw); opts.headers['Content-Type'] = 'application/json'; } catch { }
+          }
+          opts.body = bodyRaw;
+        }
+
+        const resp = await fetch(proxyUrl, opts);
+        const elapsed = Math.round(performance.now() - start);
+
+        const statusClass = resp.status < 300 ? 'ok' : resp.status < 400 ? 'warn' : 'err';
+        setDot('cors', statusClass === 'ok' ? 'on' : 'err');
+
+        let bodyText = await resp.text();
+
+        // Pretty print JSON
+        let prettyBody = bodyText;
+        try { prettyBody = JSON.stringify(JSON.parse(bodyText), null, 2); } catch { }
+
+        // Build response view
+        const meta = document.createElement('div');
+        meta.className = 'response-meta';
+        meta.innerHTML = `
+        <div class="status-badge ${statusClass}">${resp.status} ${resp.statusText}</div>
+        <span style="font-size:11px;color:var(--subtle)">${elapsed}ms</span>
+        <span style="font-size:11px;color:var(--subtle);margin-left:auto">${method} ${esc(target)}</span>
+      `;
+
+        const headers = document.createElement('div');
+        headers.className = 'response-headers';
+        const interesting = ['content-type', 'content-length', 'access-control-allow-origin', 'x-powered-by', 'server', 'cache-control'];
+        let hdrsHtml = '';
+        for (const key of interesting) {
+          const val = resp.headers.get(key);
+          if (val) hdrsHtml += `<div class="header-row"><span class="header-key">${key}</span><span class="header-val">${esc(val)}</span></div>`;
+        }
+        if (hdrsHtml) headers.innerHTML = hdrsHtml;
+
+        const body = document.createElement('pre');
+        body.className = 'response-body';
+        body.textContent = prettyBody;
+
+        res.appendChild(meta);
+        if (hdrsHtml) res.appendChild(headers);
+        res.appendChild(body);
+
+      } catch (e) {
+        setDot('cors', 'err');
+        res.innerHTML = `<div class="empty-state" style="color:var(--red);margin-top:32px">${esc(e.message)}</div>`;
+      }
+
+      btn.textContent = 'Send';
+      btn.disabled = false;
+    };
+
+    // --- Files
+    window.fetchFiles = async function () {
+      const view = $('files-view');
+      view.innerHTML = '<div class="empty-state">Loading…</div>';
+      setDot('files', 'pulse');
+
+      try {
+        const resp = await fetch('/files');
+        const files = await resp.json();
+        setDot('files', 'on');
+
+        const count = $('files-count');
+        count.textContent = files.length;
+        count.style.display = 'inline';
+        count.classList.toggle('active', files.length > 0);
+
+        if (files.length === 0) {
+          view.innerHTML = '<div class="empty-state">No files found</div>';
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'file-list';
+
+        files.forEach(f => {
+          const ext = f.split('.').pop().toLowerCase();
+          const extClass = ['js', 'mjs', 'cjs', 'css'].includes(ext) ? `ext-${ext}` : 'ext-other';
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.innerHTML = `<span class="file-ext ${extClass}">.${ext}</span><span>${esc(f)}</span>`;
+          list.appendChild(item);
+        });
+
+        view.innerHTML = '';
+        view.appendChild(list);
+      } catch (e) {
+        setDot('files', 'err');
+        view.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}</div>`;
+      }
+    };
+
+    // --- Config
+    window.fetchConfig = async function () {
+      const view = $('config-view');
+      view.innerHTML = '<div class="empty-state">Loading…</div>';
+      setDot('config', 'pulse');
+
+      try {
+        const resp = await fetch('/config');
+        const json = await resp.json();
+        setDot('config', 'on');
+
+        const pre = document.createElement('pre');
+        pre.className = 'config-json';
+        pre.innerHTML = syntaxHighlight(JSON.stringify(json, null, 2));
+        view.innerHTML = '';
+        view.appendChild(pre);
+      } catch (e) {
+        setDot('config', 'err');
+        view.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}</div>`;
+      }
+    };
+
+    // --- Resize handle
+    const DEFAULT_WIDTH = 340;
+    const handle = $('resize-handle');
+    const workspace = document.querySelector('.workspace');
+
+    let dragging = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    function setHmrWidth(px) {
+      const min = 180;
+      const max = window.innerWidth - 200;
+      const clamped = Math.max(min, Math.min(max, px));
+      workspace.style.setProperty('--hmr-width', `${clamped}px`);
+    }
+
+    handle.addEventListener('mousedown', e => {
+      dragging = true;
+      startX = e.clientX;
+      startWidth = workspace.getBoundingClientRect().width;
+      const currentVal = getComputedStyle(workspace).getPropertyValue('--hmr-width');
+      startWidth = parseInt(currentVal) || DEFAULT_WIDTH;
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      setHmrWidth(startWidth + (e.clientX - startX));
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    handle.addEventListener('dblclick', () => {
+      workspace.style.setProperty('--hmr-width', `${DEFAULT_WIDTH}px`);
+    });
+
+    function syntaxHighlight(json) {
+      return json
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+          if (/^"/.test(match)) {
+            return match.endsWith(':')
+              ? `<span class="json-key">${match}</span>`
+              : `<span class="json-str">${match}</span>`;
+          }
+          if (/true|false/.test(match)) return `<span class="json-bool">${match}</span>`;
+          if (/null/.test(match)) return `<span class="json-null">${match}</span>`;
+          return `<span class="json-num">${match}</span>`;
+        });
+    }
+  </script>
+
+</body>
+
+</html>

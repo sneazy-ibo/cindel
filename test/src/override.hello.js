@@ -1,0 +1,1 @@
+console.log('No greetings - use loader.mjs for this override test');

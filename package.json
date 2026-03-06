@@ -1,0 +1,64 @@
+{
+  "name": "cindel",
+  "version": "1.0.0",
+  "description": "Hot module replacement server and client with file watching, static file serving, CORS proxy and WebSocket proxy support",
+  "license": "GPL-3.0-or-later",
+  "author": "sneazy-ibo",
+  "homepage": "https://github.com/sneazy-ibo/cindel#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sneazy-ibo/cindel"
+  },
+  "bugs": "https://github.com/sneazy-ibo/cindel/issues",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client.js",
+      "types": "./dist/client.d.ts"
+    },
+    "./server": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.js",
+    "prepublishOnly": "bun run build"
+  },
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "chokidar": "^5.0.0",
+    "picomatch": "^4.0.0"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "cors",
+    "dev-server",
+    "file-watcher",
+    "game-modding",
+    "hmr",
+    "hot-module-reload",
+    "hot-module-replacement",
+    "hot-reload",
+    "websocket",
+    "ws-proxy"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "jsdelivr": "dist/client.iife.min.js",
+  "unpkg": "dist/client.iife.min.js"
+}

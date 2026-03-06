@@ -1,0 +1,1 @@
+{"version":3,"file":"file-loader.d.ts","sourceRoot":"","sources":["../../src/client/file-loader.js"],"names":[],"mappings":"AAAA,mFAAmF;AACnF;IACE,0BASC;IARC,aAAsB;IACtB;;;;;OAKG;IACH,WAFU,GAAG,CAAC,MAAM,EAAE;QAAE,OAAO,EAAE,MAAM,CAAC;QAAC,SAAS,EAAE,UAAU,CAAA;KAAE,CAAC,CAEvC;IAG5B,kCAOC;IAKD,iCAoBC;IAKD,oCAgBC;IAED,oCAeC;IAKD,oCAeC;IAED,uCAUC;IAED,qCAcC;IAGD,2BAGC;CACF"}
