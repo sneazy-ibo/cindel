@@ -9,15 +9,16 @@ const server = new HMRServer({
   // watchFiles: false,
   watch: ['test/src'],
   ignore: ['test/src/**/*.no.js'],
+  cold: ['test/src/**/*.cold.js'],
   static: '.',
   // injectLoader: 'test/loader.mjs',
   indexPath: 'test/index.html',
   filesEndpoint: true,
   configEndpoint: true,
-  // tls: {
-  //   key: 'localhost-key.pem',
-  //   cert: 'localhost.pem'
-  // },
+  tls: {
+    key: 'localhost-key.pem',
+    cert: 'localhost.pem'
+  },
   corsProxy: '/cors',
   wsProxy: {
     prefix: '/proxy',

@@ -3,9 +3,8 @@
 > Hot module replacement server and client with file watching, static file serving, CORS proxy and WebSocket proxy support
 
 [![npm version](https://img.shields.io/npm/v/cindel.svg)](https://www.npmjs.com/package/cindel)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/cindel?style=round-square)](https://bundlephobia.com/package/cindel@latest)
 [![license](https://img.shields.io/npm/l/cindel.svg)](LICENSE)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/cindel)](https://bundlephobia.com/package/cindel)
-
 ---
 
 ## Features
@@ -13,10 +12,10 @@
 **HMR & File Watching**
 
 - Instant push driven HMR over WebSocket on file change
-- Atomic CSS hot swap (no flash of unstyled content), script execution, and ES module reload
 - Glob pattern support for watch, ignore, and cold file configuration
 - Cold file patterns that can trigger a full page reload instead of HMR
 - Override detection to map replacement files onto their originals
+- Atomic CSS hot swap (no flash of unstyled content), script execution, and ES module reload
 
 **Server**
 
