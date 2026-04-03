@@ -1547,6 +1547,7 @@ var FileLoader = class {
   constructor(httpUrl) {
     this.httpUrl = httpUrl;
     this.loadQueue = /* @__PURE__ */ new Map();
+    this.versions = /* @__PURE__ */ new Map();
   }
   async loadFile(path) {
     const isCSS = path.endsWith(".css");
@@ -1577,22 +1578,10 @@ var FileLoader = class {
       document.head.appendChild(link);
     });
   }
-  // Replace the existing module script with a cache busted URL.
-  // Changing the URL makes the browser treat it as a new module
-  // and execute it from scratch.
   async loadModule(path) {
     const url = this.makeUrl(path);
-    const existing = document.querySelector(`script[data-file="${path}"]`);
-    if (existing) existing.remove();
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = url;
-    script.setAttribute("data-file", path);
-    return new Promise((resolve, reject) => {
-      script.onload = () => resolve(true);
-      script.onerror = () => reject(new Error(`Failed to execute module: ${path}`));
-      document.head.appendChild(script);
-    });
+    await import(url);
+    return true;
   }
   async loadScript(path) {
     const url = this.makeUrl(path);
@@ -1648,11 +1637,13 @@ var FileLoader = class {
       el.remove();
       await new Promise((r) => setTimeout(r, 0));
     }
+    this.versions.delete(path);
   }
-  // Cache bust with timestamp + random to avoid duplicate URLs on rapid reloads.
+  // Increment the version counter for individual files and return a versioned URL
   makeUrl(path) {
-    const cb = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    return `${this.httpUrl}${path}?cb=${cb}`;
+    const v = (this.versions.get(path) ?? 0) + 1;
+    this.versions.set(path, v);
+    return `${this.httpUrl}${path}?v=${v}`;
   }
 };
 

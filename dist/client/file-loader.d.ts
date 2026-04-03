@@ -12,9 +12,16 @@ export class FileLoader {
         timeout: number;
         resolvers: Function[];
     }>;
+    /**
+     * Load counter per file used for cache busting.
+     * Produces short URLs like Logger.js?v=3 which keeps
+     * browser stack traces readable.
+     * @type {Map<string, number>}
+     */
+    versions: Map<string, number>;
     loadFile(path: any): Promise<any>;
     loadCSS(path: any): Promise<any>;
-    loadModule(path: any): Promise<any>;
+    loadModule(path: any): Promise<boolean>;
     loadScript(path: any): Promise<any>;
     reloadFile(path: any): Promise<any>;
     _flushReload(path: any): Promise<void>;
