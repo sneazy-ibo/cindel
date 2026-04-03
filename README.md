@@ -399,6 +399,7 @@ process.on("SIGINT", () => server.stop().then(() => process.exit(0)));
 | `autoReconnect`     | `boolean`                            | `true`                    | Reconnect on disconnect with exponential backoff                                                 |
 | `reconnectDelay`    | `number`                             | `2000`                    | Base reconnect delay in ms                                                                       |
 | `maxReconnectDelay` | `number`                             | `30000`                   | Maximum reconnect delay cap in ms                                                                |
+| `skipOnReconnect`   | `boolean`                            | `true`                    | Skip files already loaded in the page when the server reconnects                                 |
 | `skip`              | `string[]`                           |                           | Glob patterns for files to never load                                                            |
 | `filterSkip`        | `(file, allFiles) => boolean`        |                           | Custom skip logic, OR'd with `skip`                                                              |
 | `cold`              | `string[]`                           |                           | Glob patterns that trigger a full page reload. Merged with the server's `cold` config on connect |

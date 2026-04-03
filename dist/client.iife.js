@@ -1755,6 +1755,7 @@ var HMR = (() => {
      * @param {boolean} [options.autoReconnect=true] - Reconnect on disconnect with exponential backoff.
      * @param {number} [options.reconnectDelay=2000] - Base reconnect delay in ms
      * @param {number} [options.maxReconnectDelay=30000] - Maximum reconnect delay cap in ms
+     * @param {boolean} [options.skipOnReconnect=true] - Skip files already present in the page on reconnect, preventing them from being loaded again.
      * @param {string[]} [options.skip] - Glob patterns for files that should never be loaded (e.g. `['_*\/**']`)
      * @param {function(string, string[]): boolean} [options.filterSkip] - Custom skip logic. Receives `(filePath, allFiles)`. Combined with `skip` via OR.
      * @param {string[]} [options.cold] - Glob patterns for files that require a full page reload. Merged with the server's `cold` config on connect. A `cold` event is emitted instead of hot reloading.
@@ -1774,6 +1775,7 @@ var HMR = (() => {
       this.autoReconnect = this._autoReconnectDefault;
       this.reconnectDelay = opts.reconnectDelay || 2e3;
       this.maxReconnectDelay = opts.maxReconnectDelay || 3e4;
+      this.skipOnReconnect = opts.skipOnReconnect !== false;
       this._coldPatterns = opts.cold || null;
       this._filterCold = opts.filterCold || null;
       this.shouldSkipFile = this.makeFilter(opts.skip || null, opts.filterSkip || null);
@@ -1921,7 +1923,19 @@ var HMR = (() => {
         skipped.forEach((f) => console.log(`  \u2514\u2500 ${getFileName(f)}`));
         console.groupEnd();
       }
-      const withOverrides = this.buildOverrideMap(filtered);
+      let toLoad = filtered;
+      if (this.skipOnReconnect) {
+        const alreadyLoaded = [];
+        toLoad = [];
+        for (const f of filtered) {
+          const isLoaded = this.fileLoader.versions.has(f) || document.querySelector(`[data-file="${f}"]`);
+          (isLoaded ? alreadyLoaded : toLoad).push(f);
+        }
+        if (alreadyLoaded.length > 0) {
+          this.log("info", `Server reconnected - skipping ${alreadyLoaded.length} existing file${alreadyLoaded.length !== 1 ? "s" : ""}`);
+        }
+      }
+      const withOverrides = this.buildOverrideMap(toLoad);
       const sorted2 = this.sortFiles(withOverrides);
       this.logInitFileGroup(sorted2, this.overrideMap, this.isColdFile.bind(this));
       for (const file of sorted2) {

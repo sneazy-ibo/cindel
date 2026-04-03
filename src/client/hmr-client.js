@@ -43,6 +43,7 @@ export class HMRClient {
    * @param {boolean} [options.autoReconnect=true] - Reconnect on disconnect with exponential backoff.
    * @param {number} [options.reconnectDelay=2000] - Base reconnect delay in ms
    * @param {number} [options.maxReconnectDelay=30000] - Maximum reconnect delay cap in ms
+   * @param {boolean} [options.skipOnReconnect=true] - Skip files already present in the page on reconnect, preventing them from being loaded again.
    * @param {string[]} [options.skip] - Glob patterns for files that should never be loaded (e.g. `['_*\/**']`)
    * @param {function(string, string[]): boolean} [options.filterSkip] - Custom skip logic. Receives `(filePath, allFiles)`. Combined with `skip` via OR.
    * @param {string[]} [options.cold] - Glob patterns for files that require a full page reload. Merged with the server's `cold` config on connect. A `cold` event is emitted instead of hot reloading.
@@ -65,6 +66,7 @@ export class HMRClient {
     this.autoReconnect = this._autoReconnectDefault;
     this.reconnectDelay = opts.reconnectDelay || 2000;
     this.maxReconnectDelay = opts.maxReconnectDelay || 30000;
+    this.skipOnReconnect = opts.skipOnReconnect !== false;
 
     // Store original cold config so we can merge server patterns on connect
     this._coldPatterns = opts.cold || null;
@@ -255,8 +257,24 @@ export class HMRClient {
       console.groupEnd();
     }
 
+    // Skip files that are already present
+    let toLoad = filtered;
+    if (this.skipOnReconnect) {
+      const alreadyLoaded = [];
+      toLoad = [];
+      for (const f of filtered) {
+        const isLoaded = this.fileLoader.versions.has(f) ||
+          document.querySelector(`[data-file="${f}"]`);
+        (isLoaded ? alreadyLoaded : toLoad).push(f);
+      }
+
+      if (alreadyLoaded.length > 0) {
+        this.log('info', `Server reconnected - skipping ${alreadyLoaded.length} existing file${alreadyLoaded.length !== 1 ? 's' : ''}`);
+      }
+    }
+
     // Build override map and remove original files
-    const withOverrides = this.buildOverrideMap(filtered);
+    const withOverrides = this.buildOverrideMap(toLoad);
 
     // Sort files
     const sorted = this.sortFiles(withOverrides);

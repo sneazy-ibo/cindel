@@ -39,6 +39,7 @@ export class HMRClient {
      * @param {boolean} [options.autoReconnect=true] - Reconnect on disconnect with exponential backoff.
      * @param {number} [options.reconnectDelay=2000] - Base reconnect delay in ms
      * @param {number} [options.maxReconnectDelay=30000] - Maximum reconnect delay cap in ms
+     * @param {boolean} [options.skipOnReconnect=true] - Skip files already present in the page on reconnect, preventing them from being loaded again.
      * @param {string[]} [options.skip] - Glob patterns for files that should never be loaded (e.g. `['_*\/**']`)
      * @param {function(string, string[]): boolean} [options.filterSkip] - Custom skip logic. Receives `(filePath, allFiles)`. Combined with `skip` via OR.
      * @param {string[]} [options.cold] - Glob patterns for files that require a full page reload. Merged with the server's `cold` config on connect. A `cold` event is emitted instead of hot reloading.
@@ -57,6 +58,7 @@ export class HMRClient {
         autoReconnect?: boolean;
         reconnectDelay?: number;
         maxReconnectDelay?: number;
+        skipOnReconnect?: boolean;
         skip?: string[];
         filterSkip?: (arg0: string, arg1: string[]) => boolean;
         cold?: string[];
@@ -72,6 +74,7 @@ export class HMRClient {
     autoReconnect: boolean;
     reconnectDelay: number;
     maxReconnectDelay: number;
+    skipOnReconnect: boolean;
     _coldPatterns: string[];
     _filterCold: (arg0: string) => boolean;
     shouldSkipFile: any;
