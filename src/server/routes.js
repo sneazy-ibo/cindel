@@ -1,4 +1,5 @@
 import path from 'path';
+import { CORS_HEADERS } from '../shared/constants.js';
 
 export async function handleRoutes(req, server) {
   const url = new URL(req.url);
@@ -92,9 +93,7 @@ async function handleCORSProxy(req, url, server) {
     // Clone upstream headers directly instead of spreading into a plain object
     // to avoid unnecessary allocations on every proxied response.
     const responseHeaders = new Headers(finalResponse.headers);
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', '*');
+    for (const [k, v] of Object.entries(CORS_HEADERS)) responseHeaders.set(k, v);
 
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: responseHeaders });
@@ -247,6 +246,7 @@ async function handleStaticFile(url, server) {
       "Cache-Control": "no-cache, no-store, must-revalidate",
       "Pragma": "no-cache",
       "Expires": "0",
+      ...CORS_HEADERS,
     },
   });
 }

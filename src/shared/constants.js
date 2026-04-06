@@ -25,3 +25,10 @@ export const HMR_ACTIONS = {
   REMOVE: 'remove',
   INIT: 'init'
 };
+
+export const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Private-Network': 'true',
+};

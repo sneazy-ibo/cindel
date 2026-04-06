@@ -73,9 +73,8 @@ export class Logger {
     const lines = [
       [config.httpServer, 'blue', `${this.symbols.startup} ${httpProtocol.toUpperCase()} server started on ${httpProtocol}://localhost:${config.port}`],
       [config.websocket, 'blue', `${this.symbols.startup} WebSocket HMR on ${wsProtocol}://localhost:${config.port}${config.wsPath}`],
-      [config.corsProxy, 'cyan', `${this.symbols.corsProxy} CORS proxy available at ${config.corsProxy.path}`],
-      [config.wsProxy, 'cyan', `${this.symbols.wsProxy} WS proxy available at ${config.wsProxy.path}`],
-      [config.injectLoader, 'magenta', `${this.symbols.inject} Injecting loader into index.html (${config.loaderPath})`],
+      [config.corsProxy, 'cyan', `${this.symbols.corsProxy} CORS proxy available at ${config.corsProxy?.path}`],
+      [config.wsProxy, 'cyan', `${this.symbols.wsProxy} WS proxy available at ${config.wsProxy?.path}`], [config.injectLoader, 'magenta', `${this.symbols.inject} Injecting loader into index.html (${config.loaderPath})`],
       [!config.injectLoader && config.loaderPath, 'yellow', `${this.symbols.warning} Loader file not found at "${config.loaderPath}" -> injection disabled`],
       [config.logFiles, 'yellow', `${this.symbols.config} File logging enabled`],
       [config.logProxy?.cors, 'yellow', `${this.symbols.config} CORS proxy logging enabled`],

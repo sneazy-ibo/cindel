@@ -17,6 +17,7 @@ import {
   HMR_ACTIONS,
   DEFAULT_FILES_ENDPOINT,
   DEFAULT_CONFIG_ENDPOINT,
+  CORS_HEADERS
 } from "../shared/constants.js";
 
 /**
@@ -499,9 +500,7 @@ export class HMRServer {
 
         // Add CORS headers to all HTTP responses
         const headers = new Headers(response.headers);
-        headers.set('Access-Control-Allow-Origin', '*');
-        headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        headers.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+        for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
         return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
       },
 

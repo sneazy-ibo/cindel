@@ -21,4 +21,10 @@ export namespace HMR_ACTIONS {
     let REMOVE: string;
     let INIT: string;
 }
+export const CORS_HEADERS: {
+    'Access-Control-Allow-Origin': string;
+    'Access-Control-Allow-Headers': string;
+    'Access-Control-Allow-Methods': string;
+    'Access-Control-Allow-Private-Network': string;
+};
 //# sourceMappingURL=constants.d.ts.map

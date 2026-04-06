@@ -112,6 +112,12 @@ var HMR_ACTIONS = {
   REMOVE: "remove",
   INIT: "init"
 };
+var CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Private-Network": "true"
+};
 
 // src/server/file-watcher.js
 var FileWatcher = class {
@@ -223,6 +229,10 @@ ${this.logger.symbols.watch} Watching directories:`));
     }
     this.logger.watcherStart(this.paths);
     this.isInitializing = true;
+    let resolveReady;
+    const readyPromise = new Promise((resolve) => {
+      resolveReady = resolve;
+    });
     this.watcher = chokidar.watch(this.paths, {
       ...WATCHER_CONFIG,
       ignored: (filePath, stats) => this.shouldIgnore(filePath, stats)
@@ -247,6 +257,7 @@ ${this.logger.symbols.watch} Watching directories:`));
     }).on("error", (error) => {
       this.logger.error(`Watcher error: ${error.message}`);
     }).on("ready", () => {
+      if (!this.isInitializing) return;
       this.isInitializing = false;
       this.loggedFiles.clear();
       const watched = this.watcher.getWatched();
@@ -280,10 +291,9 @@ ${this.logger.symbols.watch} Chokidar is ready`));
         this.logger.watcherNoFiles(this.paths, this.extensions);
       }
       this.onReady();
+      resolveReady();
     });
-    return new Promise((resolve) => {
-      this.watcher.on("ready", resolve);
-    });
+    return readyPromise;
   }
   async stop() {
     if (this.watcher) {
@@ -360,8 +370,8 @@ var Logger = class {
     const lines = [
       [config.httpServer, "blue", `${this.symbols.startup} ${httpProtocol.toUpperCase()} server started on ${httpProtocol}://localhost:${config.port}`],
       [config.websocket, "blue", `${this.symbols.startup} WebSocket HMR on ${wsProtocol}://localhost:${config.port}${config.wsPath}`],
-      [config.corsProxy, "cyan", `${this.symbols.corsProxy} CORS proxy available at ${config.corsProxy.path}`],
-      [config.wsProxy, "cyan", `${this.symbols.wsProxy} WS proxy available at ${config.wsProxy.path}`],
+      [config.corsProxy, "cyan", `${this.symbols.corsProxy} CORS proxy available at ${config.corsProxy?.path}`],
+      [config.wsProxy, "cyan", `${this.symbols.wsProxy} WS proxy available at ${config.wsProxy?.path}`],
       [config.injectLoader, "magenta", `${this.symbols.inject} Injecting loader into index.html (${config.loaderPath})`],
       [!config.injectLoader && config.loaderPath, "yellow", `${this.symbols.warning} Loader file not found at "${config.loaderPath}" -> injection disabled`],
       [config.logFiles, "yellow", `${this.symbols.config} File logging enabled`],
@@ -505,9 +515,7 @@ async function handleCORSProxy(req, url, server) {
     });
     const finalResponse = config.transformResponse ? await config.transformResponse(response) : response;
     const responseHeaders = new Headers(finalResponse.headers);
-    responseHeaders.set("Access-Control-Allow-Origin", "*");
-    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    responseHeaders.set("Access-Control-Allow-Headers", "*");
+    for (const [k, v] of Object.entries(CORS_HEADERS)) responseHeaders.set(k, v);
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: responseHeaders });
     }
@@ -622,7 +630,8 @@ async function handleStaticFile(url, server) {
       "Content-Type": contentType,
       "Cache-Control": "no-cache, no-store, must-revalidate",
       "Pragma": "no-cache",
-      "Expires": "0"
+      "Expires": "0",
+      ...CORS_HEADERS
     }
   });
 }
@@ -1083,9 +1092,7 @@ ${this.logger.symbols.config} WatchFiles disabled - globbing: ${this.watchPaths.
         }
         const response = await handleRoutes(req, this);
         const headers = new Headers(response.headers);
-        headers.set("Access-Control-Allow-Origin", "*");
-        headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+        for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
         return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
       },
       websocket: this.getWebSocketConfig()
@@ -1117,6 +1124,7 @@ ${this.logger.symbols.config} WatchFiles disabled - globbing: ${this.watchPaths.
   }
 };
 export {
+  CORS_HEADERS,
   DEFAULT_CONFIG_ENDPOINT,
   DEFAULT_CORS_PROXY_PATH,
   DEFAULT_FILES_ENDPOINT,

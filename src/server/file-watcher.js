@@ -161,6 +161,9 @@ export class FileWatcher {
     this.logger.watcherStart(this.paths);
     this.isInitializing = true;
 
+    let resolveReady;
+    const readyPromise = new Promise(resolve => { resolveReady = resolve; });
+
     this.watcher = chokidar.watch(this.paths, {
       ...WATCHER_CONFIG,
       ignored: (filePath, stats) => this.shouldIgnore(filePath, stats)
@@ -193,6 +196,7 @@ export class FileWatcher {
         this.logger.error(`Watcher error: ${error.message}`);
       })
       .on('ready', () => {
+        if (!this.isInitializing) return;
         this.isInitializing = false;
         this.loggedFiles.clear();
 
@@ -238,11 +242,10 @@ export class FileWatcher {
         }
 
         this.onReady();
+        resolveReady();
       });
 
-    return new Promise(resolve => {
-      this.watcher.on('ready', resolve);
-    });
+    return readyPromise;
   }
 
   async stop() {
