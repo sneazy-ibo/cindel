@@ -50,7 +50,8 @@ export class HMRClient {
    * @param {function(string): boolean} [options.filterCold] - Custom cold file logic. Receives `(filePath)`. Combined with `cold` via OR.
    * @param {function(string, string[]): string|null} [options.getOverrideTarget] - Given a changed file, return the path of the original it replaces, or `null`. Receives `(filePath, allFiles)`. When matched, the original is unloaded before the override loads.
    * @param {function(string): void} [options.onFileLoaded] - Called after each file loads or reloads. Receives `(filePath)`.
-   * @param {function(string[]): string[]} [options.sortFiles] - Custom sort for the initial file load order. Default sorts CSS before JS, cold files first.
+   * @param {function(string[]): string[]} [options.sortFiles] - Custom sort for the initial file load order. When provided, replaces `defaultSortFiles` entirely and `loadOrder` is ignored.
+   * @param {Array<Function>} [options.loadOrder] - Stages prepended before the built-in sort (CSS-first, cold-first, alphabetical). One argument: return true to load that file first. Two arguments: works like a normal sort callback.
    */
   constructor(options) {
     // Extract additional options if object was passed
@@ -81,6 +82,7 @@ export class HMRClient {
 
     this.getOverrideTarget = opts.getOverrideTarget || null;
     this.onFileLoaded = opts.onFileLoaded || null;
+    this.loadOrder = opts.loadOrder || [];
     this.sortFiles = opts.sortFiles || this.defaultSortFiles.bind(this);
 
     this.socket = null;
@@ -118,22 +120,21 @@ export class HMRClient {
 
   defaultSortFiles(files) {
     const coldSet = new Set(files.filter(f => this.isColdFile(f)));
+    const builtinStages = [
+      f => f.endsWith('.css'),
+      f => coldSet.has(f),
+      (a, b) => a.localeCompare(b),
+    ];
+
+    // loadOrder stages run first, built-ins are the fallback
+    const stages = [...this.loadOrder, ...builtinStages];
+
     return [...files].sort((a, b) => {
-      const aIsCSS = a.endsWith('.css');
-      const bIsCSS = b.endsWith('.css');
-
-      // CSS always before JS, regardless of cold status
-      if (aIsCSS && !bIsCSS) return -1;
-      if (!aIsCSS && bIsCSS) return 1;
-
-      // Within the same extension group: cold files first
-      const coldA = coldSet.has(a);
-      const coldB = coldSet.has(b);
-      if (coldA && !coldB) return -1;
-      if (!coldA && coldB) return 1;
-
-      // Alphabetical as tiebreaker
-      return a.localeCompare(b);
+      for (const stage of stages) {
+        const result = stage.length === 2 ? stage(a, b) : stage(b) - stage(a);
+        if (result !== 0) return result;
+      }
+      return 0;
     });
   }
 

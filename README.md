@@ -5,6 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/cindel.svg)](https://www.npmjs.com/package/cindel)
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/cindel?style=round-square)](https://bundlephobia.com/package/cindel@latest)
 [![license](https://img.shields.io/npm/l/cindel.svg)](LICENSE)
+
 ---
 
 ## Features
@@ -387,25 +388,26 @@ process.on("SIGINT", () => server.stop().then(() => process.exit(0)));
 - **`string`** treated as a full WebSocket URL
 - **`object`** full config, see below
 
-| Option              | Type                                 | Default                   | Description                                                                                      |
-| ------------------- | ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------ |
-| `port`              | `number`                             |                           | Port number                                                                                      |
-| `host`              | `string`                             | `'localhost'`             | Hostname                                                                                         |
-| `secure`            | `boolean`                            | `false`                   | Use `wss://` and `https://`                                                                      |
-| `wsUrl`             | `string`                             |                           | Explicit WebSocket URL, overrides host/port                                                      |
-| `httpUrl`           | `string`                             |                           | Explicit HTTP base URL for file fetching                                                         |
-| `wsPath`            | `string`                             | `'/hmr'`                  | WebSocket path                                                                                   |
-| `autoReconnect`     | `boolean`                            | `true`                    | Reconnect on disconnect with exponential backoff                                                 |
-| `reconnectDelay`    | `number`                             | `2000`                    | Base reconnect delay in ms                                                                       |
-| `maxReconnectDelay` | `number`                             | `30000`                   | Maximum reconnect delay cap in ms                                                                |
-| `skipOnReconnect`   | `boolean`                            | `true`                    | Skip files already loaded in the page when the server reconnects                                 |
-| `skip`              | `string[]`                           |                           | Glob patterns for files to never load                                                            |
-| `filterSkip`        | `(file, allFiles) => boolean`        |                           | Custom skip logic, OR'd with `skip`                                                              |
-| `cold`              | `string[]`                           |                           | Glob patterns that trigger a full page reload. Merged with the server's `cold` config on connect |
-| `filterCold`        | `(file) => boolean`                  |                           | Custom cold logic, OR'd with `cold`                                                              |
-| `getOverrideTarget` | `(file, allFiles) => string \| null` |                           | Map an override file to the original it replaces                                                 |
-| `onFileLoaded`      | `(file) => void`                     |                           | Called after each file is loaded or reloaded                                                     |
-| `sortFiles`         | `(files) => string[]`                | CSS before JS, cold first | Custom sort for the initial load order                                                           |
+| Option              | Type                                 | Default       | Description                                                       |
+| ------------------- | ------------------------------------ | ------------- | ----------------------------------------------------------------- |
+| `port`              | `number`                             |               | Port number                                                       |
+| `host`              | `string`                             | `'localhost'` | Hostname                                                          |
+| `secure`            | `boolean`                            | `false`       | Use `wss://` and `https://`                                       |
+| `wsUrl`             | `string`                             |               | Explicit WebSocket URL, overrides host/port                       |
+| `httpUrl`           | `string`                             |               | Explicit HTTP base URL for file fetching                          |
+| `wsPath`            | `string`                             | `'/hmr'`      | WebSocket path                                                    |
+| `autoReconnect`     | `boolean`                            | `true`        | Reconnect on disconnect with exponential backoff                  |
+| `reconnectDelay`    | `number`                             | `2000`        | Base reconnect delay in ms                                        |
+| `maxReconnectDelay` | `number`                             | `30000`       | Maximum reconnect delay cap in ms                                 |
+| `skipOnReconnect`   | `boolean`                            | `true`        | Skip files already loaded in the page when the server reconnects  |
+| `skip`              | `string[]`                           |               | Glob patterns for files to never load                             |
+| `filterSkip`        | `(file, allFiles) => boolean`        |               | Custom skip logic, OR'd with `skip`                               |
+| `cold`              | `string[]`                           |               | Glob patterns that emit a `cold` event instead of reloading       |
+| `filterCold`        | `(file) => boolean`                  |               | Custom cold logic, OR'd with `cold`                               |
+| `getOverrideTarget` | `(file, allFiles) => string \| null` |               | Map an override file to the original it replaces                  |
+| `onFileLoaded`      | `(file) => void`                     |               | Called after each file is loaded or reloaded                      |
+| `loadOrder`         | `Stage[]`                            |               | Extra stages prepended before the built-in sorting                |
+| `sortFiles`         | `(files) => string[]`                |               | Fully replaces the default sort. When set, `loadOrder` is ignored |
 
 ### Methods
 
@@ -470,7 +472,7 @@ client
 
 ### Skip and Cold Filters
 
-`skip` prevents files from ever being loaded by the client. `cold` marks files that need a full page reload rather than a hot swap. Both options accept glob patterns, a custom filter function, or both combined via OR logic.
+`skip` prevents files from ever being loaded by the client. `cold` marks files that emit a `cold` event instead of being hot-reloaded, what happens next is up to your `cold` event handler. Both options accept glob patterns, a custom filter function, or both combined via OR logic. Client and server `cold` patterns are merged on connect.
 
 > **Note:** Glob patterns are always relative to the project root, not the watched directory.
 
@@ -486,11 +488,65 @@ new HMRClient({
     return allFiles.includes(file.replace(".override.js", ".js"));
   },
 
-  // These files can't be hot-swapped, they need a full reload
+  // These files emit a cold event instead of being hot-reloaded
   cold: ["**/*.cold.js", "src/bootstrap.js"],
 
   // Custom cold logic
   filterCold: (file) => file.includes("/vendor/"),
+});
+```
+
+---
+
+### Load Order
+
+When the client receives the initial file list it sorts them before loading. The default order is:
+
+1. CSS before JS: stylesheets load first so scripts never run against an unstyled page
+2. Cold files first: files that require a full page reload are loaded before hot-swappable ones
+3. Alphabetical: stable tiebreaker within each group
+
+`loadOrder` lets you prepend extra stages to the pipeline without giving up the built-in sorting. Each stage is detected by how many arguments it takes:
+
+- **One argument** `f => boolean` return `true` to load that file earlier, `false` to leave it in its normal position
+- **Two arguments** `(a, b) => number` works exactly like a standard `Array.sort` callback
+
+The first stage to return a non-zero result wins; the built-in stages always follow as a fallback.
+
+```js
+new HMRClient({
+  port: 1338,
+
+  loadOrder: [
+    // Load the bootstrap file before everything else
+    (f) => f === "src/bootstrap.js",
+
+    // Load files in the core/ directory before others
+    (f) => f.startsWith("core/"),
+
+    // Higher-level files first (fewer path segments)
+    (a, b) => a.split("/").length - b.split("/").length,
+  ],
+});
+```
+
+Each stage is tried in order. The first one that produces a difference between two files decides which loads first. If a stage sees no difference, the next one is tried. The built-in stages (CSS-first, cold-first, alphabetical) always follow as a final fallback.
+
+When you need total control over the load order, pass `sortFiles` instead. It receives the full file list and must return a sorted copy. The built-in stages and any `loadOrder` are completely bypassed.
+
+```js
+new HMRClient({
+  port: 1338,
+
+  sortFiles: (files) => {
+    const order = ["src/reset.css", "src/theme.css", "src/bootstrap.js"];
+    return [
+      // Pinned files in explicit order
+      ...order.filter((f) => files.includes(f)),
+      // Everything else, alphabetical
+      ...files.filter((f) => !order.includes(f)).sort(),
+    ];
+  },
 });
 ```
 
