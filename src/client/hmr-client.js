@@ -52,6 +52,10 @@ export class HMRClient {
    * @param {function(string): void} [options.onFileLoaded] - Called after each file loads or reloads. Receives `(filePath)`.
    * @param {function(string[]): string[]} [options.sortFiles] - Custom sort for the initial file load order. When provided, replaces `defaultSortFiles` entirely and `loadOrder` is ignored.
    * @param {Array<Function>} [options.loadOrder] - Stages prepended before the built-in sort (CSS-first, cold-first, alphabetical). One argument: return true to load that file first. Two arguments: works like a normal sort callback.
+   * @param {boolean | Object} [options.iframe] - Forward files to an iframe via `postMessage` (for Private Network Access restricted environments). Pass `true` for defaults.
+   * @param {Window | HTMLIFrameElement} [options.iframe.target] - Target a specific same-origin iframe directly, skipping auto-discovery. Reattachment is not automatic.
+   * @param {string} [options.iframe.origin] - The iframe's origin used to validate incoming handshake responses. Defaults to `'*'`.
+   * @param {'iframe'|'parent'|'both'} [options.iframe.css='iframe'] - Where CSS files are loaded when `iframe` is set.
    */
   constructor(options) {
     // Extract additional options if object was passed
@@ -96,7 +100,28 @@ export class HMRClient {
     this._messageQueue = [];
     this._processingMessages = false;
 
-    this.fileLoader = new FileLoader(this.httpUrl);
+    const iframeOpts = opts.iframe === true ? {} : opts.iframe;
+    const iframeTarget = iframeOpts?.target
+      ? (iframeOpts.target?.contentWindow ?? null)
+      : null;
+
+    const iframeOrigin = iframeOpts?.origin ?? '*';
+
+    this._iframeTarget = iframeTarget;
+    this._iframeOrigin = iframeOrigin;
+
+    // When true, _waitForStub and _listenForReattach are used to discover
+    // and track the iframe target automatically via stub's hmr:ready signal.
+    this._stubManaged = !!iframeOpts && !iframeTarget;
+
+    // Stored so the listener can be removed on disconnect
+    this._onReattach = null;
+
+    this.fileLoader = new FileLoader(this.httpUrl, {
+      iframeTarget,
+      iframeOrigin,
+      css: iframeOpts?.css ?? 'iframe',
+    });
 
     /** @type {Map<string, string>} - Maps override file -> original file */
     this.overrideMap = new Map();
@@ -428,7 +453,7 @@ export class HMRClient {
         await this.processInitFiles(data.files);
       } else {
         const modeLabel = this.watchFiles ? 'HMR ready' : 'Static snapshot ready';
-        this.log('success', `${modeLabel} (${sorted.length} files loaded)`);
+        this.log('success', `${modeLabel} (0 files loaded)`);
       }
       return;
     }
@@ -540,6 +565,57 @@ export class HMRClient {
     this._processingMessages = false;
   }
 
+  // Wait for stub's hmr:ready signal. Stub fires it proactively on run.
+  // Times out after 5s if stub was never injected.
+  _waitForStub() {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        window.removeEventListener('message', onReady);
+        reject(new Error('Timed out waiting for hmr:ready. Was HMR.stub() called in the iframe?'));
+      }, 5000);
+
+      const onReady = (e) => {
+        if (e.data?.type !== 'hmr:ready') return;
+        const originOk = this._iframeOrigin === '*' || e.origin === this._iframeOrigin;
+        if (!originOk) return;
+        clearTimeout(timer);
+        window.removeEventListener('message', onReady);
+        if (this._stubManaged) {
+          this._iframeTarget = e.source;
+          this.fileLoader.iframeTarget = e.source;
+        }
+        resolve();
+      };
+
+      window.addEventListener('message', onReady);
+    });
+  }
+
+  // Persistent listener for hmr:ready that handles iframe reattachment. If the
+  // iframe reloads or is replaced, the stub fires hmr:ready again so we can
+  // update the target and re-inject all currently loaded files.
+  _listenForReattach() {
+    if (this._onReattach) return;
+
+    this._onReattach = async (e) => {
+      if (e.data?.type !== 'hmr:ready') return;
+      const originOk = this._iframeOrigin === '*' || e.origin === this._iframeOrigin;
+      if (!originOk) return;
+      // Ignore signals from the window we're already attached to
+      if (e.source === this._iframeTarget) return;
+
+      this._iframeTarget = e.source;
+      this.fileLoader.iframeTarget = e.source;
+      this.log('success', 'HMR reattached to new iframe');
+
+      for (const path of this.fileLoader.versions.keys()) {
+        await this.fileLoader.loadFile(path);
+      }
+    };
+
+    window.addEventListener('message', this._onReattach);
+  }
+
   /**
    * Connect to the HMR server
    * @returns {Promise<void>}
@@ -568,15 +644,32 @@ export class HMRClient {
       try {
         this.socket = new WebSocket(this.wsUrl);
 
-        this.socket.onopen = () => {
+        this.socket.onopen = async () => {
           settled = true;
           this.isConnected = true;
           this.reconnectAttempts = 0;
-          // Discard any messages queued from the previous connection
-          this._messageQueue = [];
-          this._processingMessages = false;
           this.log('success', 'HMR connected');
           this.emit('connect');
+
+          this._messageQueue = [];
+          // Hold the queue so INIT isn't processed before the stub is ready.
+          // Messages arriving during the handshake buffer up and drain once we unblock.
+          this._processingMessages = true;
+
+          if (this._iframeTarget || this._stubManaged) {
+            try {
+              await this._waitForStub();
+              if (this._stubManaged) this._listenForReattach();
+            } catch (e) {
+              this.log('error', e.message);
+              this._processingMessages = false;
+              reject(e);
+              return;
+            }
+          }
+
+          this._processingMessages = false;
+          if (this._messageQueue.length > 0) this._drainMessageQueue();
           resolve();
         };
 
@@ -640,6 +733,12 @@ export class HMRClient {
     this.isConnected = false;
     clearTimeout(this._reconnectTimer);
     this._reconnectTimer = null;
+
+    if (this._onReattach) {
+      window.removeEventListener('message', this._onReattach);
+      this._onReattach = null;
+    }
+
     if (this.socket) {
       this.socket.close();
       this.socket = null;

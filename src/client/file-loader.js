@@ -1,7 +1,24 @@
 /** Handles loading and hot reloading of JavaScript and CSS files via blob URLs. */
 export class FileLoader {
-  constructor(httpUrl) {
+  constructor(httpUrl, { iframeTarget = null, iframeOrigin = '*', css = 'iframe' } = {}) {
     this.httpUrl = httpUrl;
+    /**
+     * When set, JS and module files are fetched in the parent context and forwarded
+     * to this window via postMessage instead of being injected as DOM elements.
+     * CSS routing is controlled separately by the `css` option.
+     * @type {Window | null}
+     */
+    this.iframeTarget = iframeTarget;
+    /** @type {string} */
+    this.iframeOrigin = iframeOrigin;
+    /**
+     * Controls where CSS files go when `iframeTarget` is set.
+     * - `'iframe'` -> forward only, skip parent injection (default)
+     * - `'parent'` -> load normally in parent, do not forward
+     * - `'both'`   -> load in parent via `<link>` and forward to iframe
+     * @type {'iframe' | 'parent' | 'both'}
+     */
+    this.css = css;
     /**
      * Debounce state per file. Stores { timeout, resolvers[] } so that
      * when a rapid second change clears the first timeout, the first
@@ -31,8 +48,33 @@ export class FileLoader {
   // the old one. This fixes the brief flash of unstyled content that
   // happens when you remove the old sheet before the new one is parsed.
   async loadCSS(path) {
-    const existing = document.querySelector(`link[data-file="${path}"]`);
     const url = this.makeUrl(path);
+    const toIframe = this.iframeTarget && this.css !== 'parent';
+    const toParent = !this.iframeTarget || this.css !== 'iframe';
+
+    const ops = [];
+
+    if (toIframe) {
+      ops.push(
+        fetch(url).then(r => {
+          if (!r.ok) throw new Error(`Failed to fetch CSS: ${path} (${r.status})`);
+          return r.text();
+        }).then(code => {
+          this._inject('css', code, path);
+        })
+      );
+    }
+
+    if (toParent) {
+      ops.push(this._loadCSSInParent(path, url));
+    }
+
+    await Promise.all(ops);
+    return true;
+  }
+
+  _loadCSSInParent(path, url) {
+    const existing = document.querySelector(`link[data-file="${path}"]`);
 
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -54,6 +96,16 @@ export class FileLoader {
 
   async loadModule(path) {
     const url = this.makeUrl(path);
+
+    if (this.iframeTarget) {
+      const code = await fetch(url).then(r => {
+        if (!r.ok) throw new Error(`Failed to fetch module: ${path} (${r.status})`);
+        return r.text();
+      });
+      this._inject('module', code, path);
+      return true;
+    }
+
     await import(url);
     return true;
   }
@@ -63,6 +115,15 @@ export class FileLoader {
 
     const existing = document.querySelector(`script[data-file="${path}"]`);
     if (existing) existing.remove();
+
+    if (this.iframeTarget) {
+      const code = await fetch(url).then(r => {
+        if (!r.ok) throw new Error(`Failed to fetch script: ${path} (${r.status})`);
+        return r.text();
+      });
+      this._inject('script', code, path);
+      return true;
+    }
 
     const script = document.createElement('script');
     script.src = url;
@@ -116,10 +177,15 @@ export class FileLoader {
       this.loadQueue.delete(path);
     }
 
-    const el = document.querySelector(`[data-file="${path}"]`);
-    if (el) {
-      el.remove();
-      await new Promise(r => setTimeout(r, 0));
+    if (this.iframeTarget) {
+      this._post({ type: 'hmr:remove', file: path });
+      await Promise.resolve();
+    } else {
+      const el = document.querySelector(`[data-file="${path}"]`);
+      if (el) {
+        el.remove();
+        await Promise.resolve();
+      }
     }
 
     // Reset version so the next load starts from v=1 again
@@ -131,5 +197,15 @@ export class FileLoader {
     const v = (this.versions.get(path) ?? 0) + 1;
     this.versions.set(path, v);
     return `${this.httpUrl}${path}?v=${v}`;
+  }
+
+  // Send a raw postMessage to the iframe target
+  _post(message) {
+    this.iframeTarget.postMessage(message, this.iframeOrigin);
+  }
+
+  // Forward a file payload to the iframe target
+  _inject(kind, code, file) {
+    this._post({ type: 'hmr:inject', kind, code, file });
   }
 }

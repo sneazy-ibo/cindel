@@ -32,6 +32,7 @@
 - No runtime dependencies, so it works in any modern browser
 - Event system with `on`, `once`, and `off` for connect, disconnect, reload, add, remove, etc.
 - IIFE build compatible with userscript managers (Tampermonkey, Greasemonkey) via `@require`
+- Iframe injection via `postMessage` for Private Network Access restricted environments
 
 ---
 
@@ -408,6 +409,10 @@ process.on("SIGINT", () => server.stop().then(() => process.exit(0)));
 | `onFileLoaded`      | `(file) => void`                     |               | Called after each file is loaded or reloaded                      |
 | `loadOrder`         | `Stage[]`                            |               | Extra stages prepended before the built-in sorting                |
 | `sortFiles`         | `(files) => string[]`                |               | Fully replaces the default sort. When set, `loadOrder` is ignored |
+| `iframe`            | `boolean \| Object`                  |               | Forward files to an iframe via `postMessage`                      |
+| `iframe.target`     | `Window \| HTMLIFrameElement`        |               | Target a specific same-origin iframe, skips auto-discovery        |
+| `iframe.origin`     | `string`                             | `'*'`         | Validates incoming handshake responses                            |
+| `iframe.css`        | `'iframe' \| 'parent' \| 'both'`     | `'iframe'`    | Where CSS files are loaded when `iframe` is set                   |
 
 ### Methods
 
@@ -552,6 +557,38 @@ new HMRClient({
 
 ---
 
+### Iframe Injection
+
+When your project runs inside an `<iframe>` on a third-party domain, the browser's Private Network Access policy blocks the iframe from reaching `localhost` directly. The `iframe` option works around this by fetching files in the parent page and forwarding them to the iframe via `postMessage`.
+
+Call `stub()` once inside the iframe via a userscript or existing inline script:
+
+```js
+HMR.stub();
+```
+
+Then configure the client in the parent:
+
+```js
+new HMR.HMRClient({
+  port: 1338,
+  iframe: true,
+});
+```
+
+The client listens for the stub's ready signal and attaches automatically. Reattachment is automatic if the iframe reloads or is replaced. In the rare case of multiple same-origin iframes all running stub, pass `iframe.target` to target a specific one, but reattachment is then your responsibility.
+
+```js
+iframe: {
+  target: document.querySelector('iframe#html5game'),
+  css: 'both', // 'iframe' (default) | 'parent' | 'both'
+}
+```
+
+> `.mjs` files are forwarded as `<script type="module">` blocks, preserving ES module semantics. Bare specifiers and relative imports will not resolve, only self-contained modules are supported.
+
+---
+
 ### Override Detection
 
 Override detection lets you maintain a parallel directory of replacement files that shadow originals without modifying them. When an override changes, the client unloads the original before loading the override.
@@ -592,7 +629,7 @@ new HMRClient({
 | Import path                           | Environment | Description          |
 | ------------------------------------- | ----------- | -------------------- |
 | `cindel` or `cindel/server`           | Node / Bun  | `HMRServer`          |
-| `cindel/client`                       | Browser ESM | `HMRClient`          |
+| `cindel/client`                       | Browser ESM | `HMRClient`, `stub`  |
 | `https://cdn.jsdelivr.net/npm/cindel` | Browser CDN | Exposes `window.HMR` |
 
 ---
