@@ -566,16 +566,19 @@ export class HMRClient {
   }
 
   // Wait for stub's hmr:ready signal. Stub fires it proactively on run.
-  // Times out after 5s if stub was never injected.
+  // Times out after 5s and resolves anyway, a missing stub degrades gracefully.
   _waitForStub() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const timer = setTimeout(() => {
         window.removeEventListener('message', onReady);
-        reject(new Error('Timed out waiting for hmr:ready. Was HMR.stub() called in the iframe?'));
+        this.log('warning', 'Timed out waiting for hmr:ready. Was HMR.stub() called in the iframe?');
+        resolve();
       }, 5000);
 
       const onReady = (e) => {
-        if (e.data?.type !== 'hmr:ready') return;
+        let data;
+        try { data = JSON.parse(e.data); } catch { return; }
+        if (data?.type !== 'hmr:ready') return;
         const originOk = this._iframeOrigin === '*' || e.origin === this._iframeOrigin;
         if (!originOk) return;
         clearTimeout(timer);
@@ -598,7 +601,9 @@ export class HMRClient {
     if (this._onReattach) return;
 
     this._onReattach = async (e) => {
-      if (e.data?.type !== 'hmr:ready') return;
+      let data;
+      try { data = JSON.parse(e.data); } catch { return; }
+      if (data?.type !== 'hmr:ready') return;
       const originOk = this._iframeOrigin === '*' || e.origin === this._iframeOrigin;
       if (!originOk) return;
       // Ignore signals from the window we're already attached to
@@ -608,8 +613,12 @@ export class HMRClient {
       this.fileLoader.iframeTarget = e.source;
       this.log('success', 'HMR reattached to new iframe');
 
-      for (const path of this.fileLoader.versions.keys()) {
-        await this.fileLoader.loadFile(path);
+      for (const path of this.sortFiles([...this.fileLoader.versions.keys()])) {
+        try {
+          await this.fileLoader.loadFile(path);
+        } catch (e) {
+          this.log('error', `Reattach failed to load ${path}: ${e.message}`);
+        }
       }
     };
 
@@ -657,15 +666,8 @@ export class HMRClient {
           this._processingMessages = true;
 
           if (this._iframeTarget || this._stubManaged) {
-            try {
-              await this._waitForStub();
-              if (this._stubManaged) this._listenForReattach();
-            } catch (e) {
-              this.log('error', e.message);
-              this._processingMessages = false;
-              reject(e);
-              return;
-            }
+            await this._waitForStub();
+            if (this._stubManaged) this._listenForReattach();
           }
 
           this._processingMessages = false;

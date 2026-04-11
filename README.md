@@ -28,11 +28,11 @@
 
 **Client**
 
+- No runtime dependencies, works in any modern browser
 - Exponential backoff with automatic reconnect
-- No runtime dependencies, so it works in any modern browser
 - Event system with `on`, `once`, and `off` for connect, disconnect, reload, add, remove, etc.
-- IIFE build compatible with userscript managers (Tampermonkey, Greasemonkey) via `@require`
 - Iframe injection via `postMessage` for Private Network Access restricted environments
+- IIFE build compatible with userscript managers (Tampermonkey, Greasemonkey) via `@require`
 
 ---
 

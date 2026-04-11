@@ -59,9 +59,7 @@ export class FileLoader {
         fetch(url).then(r => {
           if (!r.ok) throw new Error(`Failed to fetch CSS: ${path} (${r.status})`);
           return r.text();
-        }).then(code => {
-          this._inject('css', code, path);
-        })
+        }).then(code => this._inject('css', code, path))
       );
     }
 
@@ -69,7 +67,9 @@ export class FileLoader {
       ops.push(this._loadCSSInParent(path, url));
     }
 
-    await Promise.all(ops);
+    const results = await Promise.allSettled(ops);
+    const failed = results.find(r => r.status === 'rejected');
+    if (failed) throw failed.reason;
     return true;
   }
 
@@ -102,7 +102,7 @@ export class FileLoader {
         if (!r.ok) throw new Error(`Failed to fetch module: ${path} (${r.status})`);
         return r.text();
       });
-      this._inject('module', code, path);
+      await this._inject('module', code, path);
       return true;
     }
 
@@ -121,7 +121,7 @@ export class FileLoader {
         if (!r.ok) throw new Error(`Failed to fetch script: ${path} (${r.status})`);
         return r.text();
       });
-      this._inject('script', code, path);
+      await this._inject('script', code, path);
       return true;
     }
 
@@ -178,8 +178,7 @@ export class FileLoader {
     }
 
     if (this.iframeTarget) {
-      this._post({ type: 'hmr:remove', file: path });
-      await Promise.resolve();
+      await this._postAndAwaitAck({ type: 'hmr:remove', file: path });
     } else {
       const el = document.querySelector(`[data-file="${path}"]`);
       if (el) {
@@ -198,14 +197,23 @@ export class FileLoader {
     this.versions.set(path, v);
     return `${this.httpUrl}${path}?v=${v}`;
   }
-
-  // Send a raw postMessage to the iframe target
-  _post(message) {
-    this.iframeTarget.postMessage(message, this.iframeOrigin);
+  // Post a message and resolve once the stub sends back hmr:ack
+  _postAndAwaitAck(message) {
+    return new Promise((resolve) => {
+      const onAck = (e) => {
+        if (e.source !== this.iframeTarget) return;
+        let data;
+        try { data = JSON.parse(e.data); } catch { return; }
+        if (data?.type !== 'hmr:ack') return;
+        window.removeEventListener('message', onAck);
+        resolve();
+      };
+      window.addEventListener('message', onAck);
+      this.iframeTarget.postMessage(JSON.stringify(message), this.iframeOrigin);
+    });
   }
 
-  // Forward a file payload to the iframe target
   _inject(kind, code, file) {
-    this._post({ type: 'hmr:inject', kind, code, file });
+    return this._postAndAwaitAck({ type: 'hmr:inject', kind, code, file });
   }
 }
