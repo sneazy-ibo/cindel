@@ -1,6 +1,6 @@
 {
   "name": "cindel",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Hot module replacement server and client with file watching, static file serving, CORS proxy and WebSocket proxy support",
   "license": "GPL-3.0-or-later",
   "author": "sneazy-ibo",
