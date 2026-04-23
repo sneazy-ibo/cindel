@@ -130,7 +130,11 @@ export class FileLoader {
     script.setAttribute('data-file', path);
 
     return new Promise((resolve, reject) => {
-      script.onload = () => resolve(true);
+      script.onload = () => {
+        const previous = document.querySelector(`script[data-file="${path}"]:not([src="${url}"])`);
+        if (previous) previous.remove();
+        resolve(true);
+      };
       script.onerror = () => reject(new Error(`Failed to load script: ${path}`));
       document.head.appendChild(script);
     });
