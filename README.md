@@ -442,14 +442,14 @@ client
     console.log(`Loaded ${files.length} files`);
     console.log("Server cold patterns:", config.cold);
   })
-  .on("reload", ({ file }) => {
+  .on("reload", (file) => {
     console.log(`Hot-reloaded: ${file}`);
-    applyChanges(file);
+    swapPrototype(file);
   })
-  .on("add", ({ file }) => {
+  .on("add", (file) => {
     console.log(`New file available: ${file}`);
   })
-  .on("remove", ({ file }) => {
+  .on("remove", (file) => {
     console.log(`File removed: ${file}`);
     cleanupForFile(file);
   })
@@ -467,9 +467,9 @@ client
 | `connect`    |                     | WebSocket connection established       |
 | `disconnect` |                     | WebSocket disconnected                 |
 | `init`       | `{ files, config }` | Server sent the initial file list      |
-| `reload`     | `{ file }`          | A file was changed and hot-reloaded    |
-| `add`        | `{ file }`          | A new file was detected                |
-| `remove`     | `{ file }`          | A file was removed                     |
+| `reload`     | `file: string`      | A file was changed and hot-reloaded    |
+| `add`        | `file: string`      | A new file was detected                |
+| `remove`     | `file: string`      | A file was removed                     |
 | `cold`       | `file: string`      | A cold file changed                    |
 | `error`      | `Error`             | A connection or message error occurred |
 
