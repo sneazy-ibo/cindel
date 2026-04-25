@@ -23,6 +23,7 @@
 - HTTP CORS proxy with configurable header injection
 - WebSocket proxy with header forwarding and message interception
 - Static file server and automatic `index.html` loader injection
+- Custom route handlers and directory mirroring via Bun's native routing
 - TLS/HTTPS + WSS support
 - `/files` endpoint exposing the live watched file list as JSON
 
@@ -142,6 +143,7 @@ You can even load it through a user script on any domain:
 | `injectLoader`   | `string`                                      |                      | Script path injected into `index.html` before `</head>`                                         |
 | `corsProxy`      | `boolean \| string\| CORSProxyConfig`         |                      | Enable the HTTP CORS proxy                                                                      |
 | `wsProxy`        | `WSProxyConfig`                               |                      | Proxy WebSocket connections to an upstream server                                               |
+| `routes`         | `Object`                                      |                      | Custom routes passed directly to `Bun.serve`                                                    |
 | `filesEndpoint`  | `boolean \| string`                           | `'/files'`           | Expose the watched file list as JSON. `true` mounts at `/files`                                 |
 | `configEndpoint` | `boolean \| string`                           | `'/config'`          | Expose the server config as JSON. `false` to disable                                            |
 | `getFiles`       | `() => string[]`                              |                      | Override the file list sent to connecting clients                                               |
@@ -259,6 +261,43 @@ new HMRServer({
 ```
 
 `.mjs` loader files are injected with `type="module"`. All static responses include `Cache-Control: no-cache` headers so the browser never serves stale files during development.
+
+---
+
+### Routing
+
+The `routes` option is passed directly to `Bun.serve`. Useful for mocking APIs, serving specific files, or mirroring directories without a separate server process. See [Bun's routing docs](https://bun.sh/docs/api/http#routing) for the full API.
+
+```js
+routes: {
+  // Serve a specific file
+  '/favicon.ico': new Response(Bun.file('./public/favicon.ico')),
+
+  // Mock API responses
+  '/api/session': Response.json({ user: 'dev', role: 'admin' }),
+  '/api/flags':   Response.json({ darkMode: true, betaFeatures: false }),
+
+  // Named params
+  '/api/users/:id': req => Response.json({ id: req.params.id }),
+
+  // Per-method handlers
+  '/api/posts': {
+    GET: () => new Response("List posts"),
+    POST: async req => {
+      const body = await req.json();
+      return Response.json({ created: true, ...body });
+    },
+  },
+
+  // Mirror directory /assets/* served from /dist/assets/*
+  '/assets/*': req => new Response(Bun.file(`./dist/assets/${req.params['*']}`)),
+
+  // SPA fallback
+  '/*': new Response(Bun.file('./index.html')),
+}
+```
+
+> **Note:** Avoid paths that overlap with `wsPath`, `filesEndpoint`, `configEndpoint`, or any proxy paths, the server will warn on startup if a collision is detected.
 
 ---
 

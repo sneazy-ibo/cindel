@@ -126,6 +126,7 @@ export class HMRServer {
    * @param {string} [options.injectLoader] - Path to a script that will be injected into index.html via `<script>` before `</head>`
    * @param {boolean|string|CORSProxyConfig} [options.corsProxy] - Enable the HTTP CORS proxy. `true` mounts at `/proxy`. A string uses that as the path directly e.g. `'/cors'`.
    * @param {WSProxyConfig} [options.wsProxy] - Proxy WebSocket connections to an upstream server
+   * @param {Object} [options.routes] - Custom routes passed directly to Bun.serve. Avoid shadowing reserved paths, the server will warn on startup if a collision is detected.
    * @param {function(): string[]} [options.getFiles] - Override the file list sent to connecting clients. Called on every new connection.
    * @param {boolean|string} [options.filesEndpoint] - Expose the watched file list as JSON. `true` mounts at `/files`, a string uses that as the path.
    * @param {boolean|string} [options.configEndpoint] - Expose the server config as JSON. `true` mounts at `/config`, a string uses that as the path.
@@ -199,6 +200,25 @@ export class HMRServer {
       };
     } else {
       this.wsProxy = null;
+    }
+
+    // Routes
+    this.routes = options.routes || null;
+
+    if (this.routes) {
+      const reserved = [
+        this.wsPath,
+        this.filesEndpoint,
+        this.configEndpoint,
+        this.corsProxy?.path,
+        this.wsProxy?.path
+      ].filter(Boolean);
+
+      for (const path of Object.keys(this.routes)) {
+        if (reserved.some(r => path.startsWith(r))) {
+          this.logger.warning(`Route "${path}" may shadow a reserved path`);
+        }
+      }
     }
 
     // Loader injection
@@ -480,6 +500,7 @@ export class HMRServer {
     const serverConfig = {
       port: this.port,
       hostname: this.bindHost,
+      ...(this.routes && { routes: this.routes }),
 
       fetch: async (req, server) => {
         const url = new URL(req.url);
