@@ -141,6 +141,7 @@ You can even load it through a user script on any domain:
 | `static`         | `string \| false`                             | `'.'`                | Directory to serve static files from. Pass `false` to disable static serving                    |
 | `indexPath`      | `string`                                      | `'index.html'`       | Path to `index.html`                                                                            |
 | `injectLoader`   | `string`                                      |                      | Script path injected into `index.html` before `</head>`                                         |
+| `injectPaths`    | `Array<string\|{path: string, html: string}>` | `['/']`              | Paths where the loader script is injected                                                       |
 | `corsProxy`      | `boolean \| string\| CORSProxyConfig`         |                      | Enable the HTTP CORS proxy                                                                      |
 | `wsProxy`        | `WSProxyConfig`                               |                      | Proxy WebSocket connections to an upstream server                                               |
 | `routes`         | `Object`                                      |                      | Custom routes passed directly to `Bun.serve`                                                    |

@@ -124,6 +124,7 @@ export class HMRServer {
    * @param {string} [options.static] - Directory to serve static files from (e.g. `'.'` or `'public'`), Defaults to `'.'` for serving from project root.
    * @param {string} [options.indexPath='index.html'] - Path to index.html, used as the `/` fallback and for loader injection
    * @param {string} [options.injectLoader] - Path to a script that will be injected into index.html via `<script>` before `</head>`
+   * @param {Array<string|{path: string, html: string}>} [options.injectPaths=['/']] - Paths where the loader script is injected. Defaults to `['/']`.
    * @param {boolean|string|CORSProxyConfig} [options.corsProxy] - Enable the HTTP CORS proxy. `true` mounts at `/proxy`. A string uses that as the path directly e.g. `'/cors'`.
    * @param {WSProxyConfig} [options.wsProxy] - Proxy WebSocket connections to an upstream server
    * @param {Object} [options.routes] - Custom routes passed directly to Bun.serve. Avoid shadowing reserved paths, the server will warn on startup if a collision is detected.
@@ -231,6 +232,7 @@ export class HMRServer {
       this.loaderPath = null;
     }
     this.injectLoader = this.loaderPath !== null;
+    this.injectPaths = options.injectPaths || ['/'];
     this.indexPath = options.indexPath || 'index.html';
 
     // TLS/HTTPS
@@ -293,6 +295,7 @@ export class HMRServer {
       filesEndpoint: this.filesEndpoint,
       injectLoader: this.injectLoader,
       loaderPath: this.loaderPath,
+      injectPaths: this.injectPaths,
       indexPath: this.indexPath,
       tls: this.tls,
       handleSignals: this.handleSignals,

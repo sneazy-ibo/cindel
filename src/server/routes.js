@@ -17,8 +17,11 @@ export async function handleRoutes(req, server) {
     if (response) return response;
   }
 
-  if (server.injectLoader && url.pathname === '/') {
-    return handleIndexInjection(req, server);
+  if (server.injectLoader) {
+    const entry = server.injectPaths.find(p =>
+      typeof p === 'string' ? p === url.pathname : p.path === url.pathname
+    );
+    if (entry) return handleIndexInjection(req, server, entry);
   }
 
   if (server.staticDir) {
@@ -127,9 +130,9 @@ async function handleCORSProxy(req, url, server) {
   }
 }
 
-async function handleIndexInjection(req, server) {
+async function handleIndexInjection(req, server, entry) {
   try {
-    const indexFile = server.indexPath || 'index.html';
+    const indexFile = (typeof entry === 'object' ? entry.html : null) || server.indexPath || 'index.html';
 
     // If indexPath is absolute and a staticDir is set, it would escape the
     // static root since path.resolve treats absolute segments as a new root.
