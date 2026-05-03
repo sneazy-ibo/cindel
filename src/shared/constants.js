@@ -32,3 +32,21 @@ export const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Private-Network': 'true',
 };
+
+export const HOP_BY_HOP_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'host',
+  'proxy-connection',
+  'sec-websocket-key',
+  'sec-websocket-accept',
+  'sec-websocket-version',
+  'sec-websocket-extensions',
+  'sec-websocket-protocol',
+]);

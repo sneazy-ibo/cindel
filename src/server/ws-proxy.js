@@ -1,3 +1,6 @@
+import { HOP_BY_HOP_HEADERS } from '../shared/constants.js'
+import { normalizeHeaders } from '../shared/utils.js'
+
 export function handleWSProxy(client, path, config, logger, logProxy) {
   // Extract target URL by removing path prefix
   // '/proxy/wss://example.com:9081/' -> 'wss://example.com:9081/'
@@ -29,24 +32,27 @@ export function handleWSProxy(client, path, config, logger, logProxy) {
   let headers = {};
 
   if (config.forwardHeaders && client.data.headers) {
-    if (config.forwardHeaders === true) {
-      headers = { ...client.data.headers };
-    } else if (Array.isArray(config.forwardHeaders)) {
-      for (const name of config.forwardHeaders) {
-        const value = client.data.headers?.[name.toLowerCase()];
-        if (value !== undefined) {
-          headers[name.toLowerCase()] = value;
-        }
-      }
-    }
+    // Hop-by-hop headers (RFC 7230 §6.1) are only meaningful for a single connection
+    // and must not be forwarded. Sec-WebSocket-* are also stripped as they belong to
+    // the upstream handshake.
+    const candidates = config.forwardHeaders === true
+      ? Object.entries(client.data.headers)
+      : config.forwardHeaders.map(name => [name.toLowerCase(), client.data.headers[name.toLowerCase()]]);
+
+    headers = {
+      ...headers,
+      ...Object.fromEntries(
+        candidates.filter(([name, value]) => value?.trim() && !HOP_BY_HOP_HEADERS.has(name))
+      )
+    };
   }
 
   if (config.headers) {
-    headers = { ...headers, ...config.headers };
+    headers = { ...headers, ...normalizeHeaders(config.headers) }
   }
 
   if (config.getHeaders) {
-    headers = { ...headers, ...config.getHeaders(targetUrl, client.data.headers) };
+    headers = { ...headers, ...normalizeHeaders(config.getHeaders(targetUrl, client.data.headers)) }
   }
 
   const wsOptions = { headers };

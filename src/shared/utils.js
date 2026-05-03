@@ -49,6 +49,10 @@ export function normalizeProxyPath(path, defaultPath) {
   return (path || defaultPath).replace(/^(?!\/)/, '/').replace(/\/+$/, '');
 }
 
+export function normalizeHeaders(obj) {
+  return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k.toLowerCase(), v]));
+}
+
 export function resolveEndpoint(value, defaultPath) {
   if (!value) return null;
   if (value === true) return defaultPath;
